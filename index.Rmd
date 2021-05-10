@@ -1,11 +1,9 @@
 ---
-title: "Index"
+title: "Attribution"
 author: "Wenlu Yuan, Yuqi Zhao, Pu Lou"
 date: "5/9/2021"
 output: html_document
 ---
-
-Attribution:
 
 Wenlu Yuan: Organizing code in R and Python 
 

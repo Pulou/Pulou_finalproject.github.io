@@ -3,7 +3,7 @@ output_dir: "."
 navbar:
   title : "Fill Shark's Final Project"
   left:
-   - text: "Index"
+   - text: "Attribution"
      href: index.html
    - text: "Dashboard"
      href: Final_Dashboard.html
