@@ -46,7 +46,7 @@ Studying tweets with #Covid and #CovidVaccine
 
 In this study, we examine people's emotional changes during Covid-19 through tweets people posted during the pandemic. We study emotional change because emotions have a special motivational function that can influence and guide behavior in a way that is identical to physiological motivation, and can also serve as a special psychological context to influence the motivational state of behavior. 
 
-According to previous KFF statistics, about 4 in 10 adults in the United States reported symptoms of anxiety or depression during the pandemic, up from 1 in 10 adults who reported these symptoms from January to June 2019. This phenomenon indicates that the virus and mental issues continued to hit the entire community during Covid, but the advent of the vaccine in the late pandemic largely mitigated this anxiety. In the following, we will present a comparison of people's emotions through text mining between tweets posted during the Covid-19 and those posted after the vaccine emerged, and examine people's emotional state now.
+According to previous KFF statistics, about 4 in 10 adults in the United States reported symptoms of anxiety or depression during the pandemic, up from 1 in 10 adults who reported these symptoms from January to June 2019. This phenomenon indicates that the virus and mental issues continued to hit the entire community during Covid, but the advent of the vaccine in the late pandemic largely mitigated this anxiety. In the following, we will present a comparison of people’s emotions through text mining between tweets posted with #covid and #CovidVaccine, and examine whether people's attitudes towards COVID-19 change when they mention vaccine. 
 
 
 Data & Methodology
@@ -328,8 +328,6 @@ Column {data-width=250}
 ### Result
 The word cloud analysis shows similar results on #CovidVaccine as it in the most common word that we mentioned above. However, the word cloud analysis in #covid yielded the word "help". This result corresponds to the situation at the beginning of the outbreak when people did not know how to deal with the COVID. There were tweets from individuals and organizations seeking help, and also offering up. 
 
-The sentiment analysis of #covid shows stronger sentiment of “negative”, “fear”, and “sadness”. However, to our surprise, the strongest sentiment of #covid is “trust”. Most people trust parents (especially father), trust hospitals, and trust marriage. Although many negative emotions were present, at the same time “positive” emotions were also strongly talked about in donations, vaccines, and the public. In general, the #covid tweet contains a wide range of emotions.
-
 
 
 Top Words by Sentiment {data-navmenu=Analysis}
@@ -430,7 +428,7 @@ COVID_COVIDvaccine_sentiment <- COVID_COVIDvaccine_ratios %>%
   top_n(10, abs(logratio)) %>%
   ungroup() 
 
-ggplotly(graph7)
+graph7
 
 ```
 
@@ -445,7 +443,7 @@ ggplot(COVID_COVIDvaccine_sentiment, aes(x = word, y = logratio, fill = logratio
   scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine"),
                     values = c("#378dfc", "#20c997")) -> graph8
 
-ggplotly(graph8)
+graph8
 
 ```
 
