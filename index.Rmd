@@ -1,0 +1,6 @@
+---
+title: "Index"
+author: "Wenlu Yuan, Yuqi Zhao, Pu Lou"
+date: "5/9/2021"
+output: html_document
+---
