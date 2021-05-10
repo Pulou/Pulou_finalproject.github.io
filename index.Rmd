@@ -4,3 +4,11 @@ author: "Wenlu Yuan, Yuqi Zhao, Pu Lou"
 date: "5/9/2021"
 output: html_document
 ---
+
+Attribution:
+
+Wenlu Yuan: Organizing code in R and Python 
+
+Yuqi Zhao: Organizing website creation and code in R for dashboard
+
+Pu Lou: Organizing text writing and data mining
