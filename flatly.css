@@ -1,0 +1,68 @@
+body {
+  margin: 40;
+  padding-top: 69px;
+  font-family: var(--bs-font-sans-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #000000;
+  background-color: #f0f5fa;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+.section.sidebar {
+  top: 100px;
+  background-color: #000000;
+
+}
+
+.value-box {
+  color: #6610f2;
+  margin: 2rem 0;
+  color: inherit;
+  background-color: #6610f2;
+  border: 2;
+  opacity: 0.25;
+}
+
+.bg-primary {
+  background-color: #5b62f4;
+  color: #5b62f4;
+}
+
+#change navigation bar color here
+.nav-tabs-custom > .nav-tabs > li.active {
+  border-top-color: #5b62f4;
+  color: #5b62f4;
+}
+
+.navbar-inverse {
+  background-color: #5b62f4;
+  border-color: #5b62f4;
+}
+.navbar-inverse .navbar-brand {
+  color: #FFFFFF;
+}
+
+.navbar-inverse .navbar-brand:hover,
+.navbar-inverse .navbar-brand:focus {
+  color: #f0f5fa;
+  background-color: transparent;
+}
+
+.bg-info {
+  background-color: #5b62f4;
+}
+
+.bg-warning {
+  background-color: #5b62f4;
+}
+
+.bg-success {
+  background-color: #5b62f4;
+}
+
+.bg-danger {
+  background-color: #5b62f4;
+}

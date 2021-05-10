@@ -1,9 +1,11 @@
 ---
-title: "Tweets Related to COVID-19 Pre- and Post- Vaccination"
-output: 
+title: "People's emotional changes during Covid-19"
+output:
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+    css: flatly.css
+
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +17,9 @@ library(scales)
 library(parallel)
 library(plotly)
 library(knitr)
+library(ggplot2)
+library(shiny)
+library(RColorBrewer)
 
 my.cluster <- makeCluster(spec = 4) 
 clusterSetRNGStream(cl = my.cluster, iseed = 19390909) 
@@ -27,14 +32,38 @@ library(flexdashboard)
 
 ```
 
+
 Introduction
 =====================================================================
+
+**People's emotional changes during Covid-19**
+
+Studying tweets with #Covid and #CovidVaccine
+
+
+**Introduction**
+
+
+In this study, we examine people's emotional changes during Covid-19 through tweets people posted during the pandemic. We study emotional change because emotions have a special motivational function that can influence and guide behavior in a way that is identical to physiological motivation, and can also serve as a special psychological context to influence the motivational state of behavior. 
+
+According to previous KFF statistics, about 4 in 10 adults in the United States reported symptoms of anxiety or depression during the pandemic, up from 1 in 10 adults who reported these symptoms from January to June 2019. This phenomenon indicates that the virus and mental issues continued to hit the entire community during Covid, but the advent of the vaccine in the late pandemic largely mitigated this anxiety. In the following, we will present a comparison of people's emotions through text mining between tweets posted during the Covid-19 and those posted after the vaccine emerged, and examine people's emotional state now.
+
 
 Data & Methodology
 =====================================================================
 
-Column {data-width=650}
------------------------------------------------------------------------
+**Data Manipulation and Methodology**
+
+We extracted in total 10,000 tweets from Twitter, 5000 tweets (in English) hashtagged #covid and 5000 tweets hashtagged #CovidVaccine. 
+
+**Tiding Data:** 
+Once we got the data, we first removed the duplicates because some tweets were #covid and #CovidVaccine at the same time. Second, cleaned up the unnecessary data, leaving only usable data such as text, IDs, retweets, etc. 
+
+**Preliminary explorations:** 
+Then, with the tidy data, we first counted the time frames that people used Twitter to post information on social media by using ggplot function to generate graphs to compare. 
+After that, we moved into assessing the most commonly used words of each hashtag. We first apply the regular expression pattern method of filtering words and numbers (also includes hashtags, @, digits, but not punctuation, then plot words into graphs for comparison. Then, plot word clouds for comparison by a stemming method that gets rid of stop words, punctuation, white space, number and customized words such as “the, https, t.co, with, and” and so on. 
+
+Finally, analyze the sentiment of texts. In this step, we conducted sentiment analysis for each hashtag that groups tweet words with the nrc lexicon into 10 sentiments. Then, we calculate the log odds ratio of commonly used words by each hashtag to see how likely a certain word is used by #covid or #CovidVaccine.
 
 ### Data sample demonstration of COVID dataset
 
@@ -61,9 +90,6 @@ cleaned_tweets_covid %>% head(10)
 cleaned_tweets_covidvaccine %>% head(10) 
 
 ```
-***
-Type comments here
-
 
 
 Preliminary Analysis{data-navmenu=Analysis}
@@ -71,7 +97,6 @@ Preliminary Analysis{data-navmenu=Analysis}
 
 Column {data-width=500}
 -----------------------------------------------------------------------
-
 ### COVID dataset
 
 ```{r}
@@ -85,15 +110,14 @@ cleaned_tweets_covid %>%
   scale_x_continuous("Time", breaks = seq(1,24,1)) +
   scale_y_continuous("% of tweets", labels = percent_format()) + 
   labs(title = "What time do the people published tweets related to COVID?") +
-  geom_line() ->graph1
+  geom_line(color="#378dfc") ->graph1
 
 ggplotly(graph1)
 
 ```
-***
-Type comments here
 
-### Vaccine dataset
+
+### COVID Vaccine dataset
 ```{r}
 
 cleaned_tweets_covidvaccine %>%
@@ -101,23 +125,40 @@ cleaned_tweets_covidvaccine %>%
   mutate(percent = n/sum(n)) %>%
   ggplot(aes(x = hour, y = percent)) +
   labs(x = "Hour of day (EST)", y = "% of tweets", color = "") + 
-  scale_x_continuous("Time", breaks = seq(1,24,1)) +
+  scale_x_continuous("Time", breaks = seq(1,24,1), c(1:24)) +
   scale_y_continuous(labels = percent_format()) + 
   labs(title = "What time do the people published tweets related to COVID vaccine?") +
-  geom_line() -> graph2
+  geom_line(color="#20c997") -> graph2
 
 ggplotly(graph2)
 
 ```
-***
-Type comments here
+
+### 
+
+**What time do the people published tweets?**
 
 
-Column {data-width=350 .tabset}
+The preliminary exploration part shows that based on EST time, people (40%) tweets most frequently about #covid at around 1pm. As the night wore on, the number of tweets dwindled. People (14%) tweets the most about #CovidVaccine at around 11am, but there were also a lot of people (almost 12%) tweeted around 6am in the morning. 
+
+We infer that there are many official accounts of the news industry and the pharmaceutical industry needs to publish the latest news about vaccines early in the morning in its competitive environments. 
+
+Notably, the time periods shown in the two charts are not equal. We believe one of the main factors is the unequal amount of data in the two filtered sets. There are more #covid tweets than #CovidVaccine, so the time period after the #covid stats is more concentrated while the #CovidVaccine time period is more spread out. 
+
+
+Column {data-width=500 .tabset}
 -----------------------------------------------------------------------
+ 
+**Most common words in tweets**
+
+Mapping the most frequently tweeted word of both hashtags, the most common word mentioned by #covid is “kids”. Based on checking our graphs and viewing some tweets about kids, we deduct that during the outbreak, the subject of schooling was talked about more by people on social media. Kindergartens and primary schools with more young kids may become the focus of conversation. 
+
+The most common word mentioned by #CovidVaccine is “vaccine”, and the next more frequently mentioned word is “vaccinated”. After the advent of vaccines, there is a new social media trend of posted vaccination cards or stickers to show that you are vaccinated. We believe this trend is the main reason for the frequent mentions of these two words. 
+
+
+
 
 ### COVID dataset
-
 ```{r}
 # Load the tidytext package - to bag the sentence into texts
 library(tidytext)
@@ -146,17 +187,15 @@ tweets_covid_words %>%
   head(20) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(x = word, y = n)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill="#378dfc") + 
   ylab("Occurrences") +
   coord_flip() + labs(title = "Most common words in tweets related to COVID") -> graph3
 
 ggplotly(graph3)
 
 ```
-***
-Type comments here
 
-### Vaccine dataset
+### COVID Vaccine dataset
 ```{r}
 
 tweets_covidvaccine_words %>%
@@ -164,28 +203,143 @@ tweets_covidvaccine_words %>%
   head(20) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(x = word, y = n)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", fill="#20c997") +
   ylab("Occurrences") +
   coord_flip()+ labs(title = "Most common words in tweets related to COVID vaccine") -> graph4
 
 ggplotly(graph4)
 
 ```
-***
-Type comments here
-
 
 World Clouds {data-navmenu=Analysis}
 =====================================================================
 
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### COVID dataset
+```{r}
+
+library(tm)
+library(wordcloud)
+library("SnowballC")
+library("RColorBrewer")
+
+tweets_covid_text <- tweets_covid %>% select(text)
+tweets_covidvaccine_text <- tweets_covidvaccine %>% select(text)
+tweets_covid_text <- Corpus(VectorSource(tweets_covid_text))
+
+
+tweets_covid_text_toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+tweets_covid_text <- tm_map(tweets_covid_text, tweets_covid_text_toSpace, "/")
+tweets_covid_text <- tm_map(tweets_covid_text, tweets_covid_text_toSpace, "@")
+tweets_covid_text <- tm_map(tweets_covid_text, tweets_covid_text_toSpace, "\\|")
+
+# Convert the text to lower case
+tweets_covid_text <- tm_map(tweets_covid_text, content_transformer(tolower))
+# Remove numbers
+tweets_covid_text <- tm_map(tweets_covid_text, removeNumbers)
+
+# Remove common stopwords
+# specify your stopwords as a character vector
+tweets_covid_text <- tm_map(tweets_covid_text, removeWords, 
+                            c("https", "t.co","the", "and", "with", "for", "has", "will", "from","you","that", "are", "is", "this", "have", "covid", "covidvaccine", "vaccine","vaccinated","#vaccine","vaccination","vaccines")) 
+
+# Remove punctuations
+tweets_covid_text <- tm_map(tweets_covid_text, removePunctuation)
+# Eliminate extra white spaces
+tweets_covid_text <- tm_map(tweets_covid_text, stripWhitespace)
+# Text stemming
+tweets_covid_text <- tm_map(tweets_covid_text, stemDocument)
+```
+
+```{r}
+tweets_covid_textdtm <- TermDocumentMatrix(tweets_covid_text)
+m <- as.matrix(tweets_covid_textdtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+kable(head(d, 50), title = "Top words by count")
+```
+
+### COVID dataset wordcloud
+```{r}
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(50, "Dark2"))
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### COVID Vaccine dataset
+
+```{r}
+
+tweets_covidvaccine_text <- Corpus(VectorSource(tweets_covidvaccine_text))
+
+tweets_covidvaccine_text_toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, tweets_covidvaccine_text_toSpace, "/")
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, tweets_covidvaccine_text_toSpace, "@")
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, tweets_covidvaccine_text_toSpace, "\\|")
+
+# Convert the text to lower case
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, content_transformer(tolower))
+# Remove numbers
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, removeNumbers)
+
+# Remove common stopwords
+# specify your stopwords as a character vector
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, removeWords, 
+                                   c("https", "t.co","the", "and", "with", "for", "has", "will", "from","you","that", "are", "is", "this", "have", "covid", "covidvaccine", "vaccine")) 
+
+# Remove punctuations
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, removePunctuation)
+# Eliminate extra white spaces
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, stripWhitespace)
+# Text stemming
+tweets_covidvaccine_text <- tm_map(tweets_covidvaccine_text, stemDocument)
+
+```
+
+
+```{r}
+tweets_covidvaccine_textdtm <- TermDocumentMatrix(tweets_covidvaccine_text)
+m <- as.matrix(tweets_covidvaccine_textdtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+kable(head(d, 50), title = "Top words by count")
+```
+
+### COVID Vaccine dataset wordcloud 
+```{r}
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(50, "Dark2"))
+
+```
+
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+### Result
+The word cloud analysis shows similar results on #CovidVaccine as it in the most common word that we mentioned above. However, the word cloud analysis in #covid yielded the word "help". This result corresponds to the situation at the beginning of the outbreak when people did not know how to deal with the COVID. There were tweets from individuals and organizations seeking help, and also offering up. 
+
+The sentiment analysis of #covid shows stronger sentiment of “negative”, “fear”, and “sadness”. However, to our surprise, the strongest sentiment of #covid is “trust”. Most people trust parents (especially father), trust hospitals, and trust marriage. Although many negative emotions were present, at the same time “positive” emotions were also strongly talked about in donations, vaccines, and the public. In general, the #covid tweet contains a wide range of emotions.
+
+
+
 Top Words by Sentiment {data-navmenu=Analysis}
 =====================================================================
-
 
 Column {data-width=500 .tabset}
 -----------------------------------------------------------------------
 
-### Top 30 words used in tweets by sentiment (COVID)
+
+### Top 30 words by sentiment (COVID)
 
 ```{r}
 tweets_covid_words_sentiment <-    
@@ -204,30 +358,33 @@ ggplot(tweets_covid_words_sentiment, aes(x = word, y = n, fill = sentiment)) +
   facet_grid(~ sentiment, scales = "free", space="free_x") +
   geom_bar(stat = "identity", position = "dodge", width = 0.9) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) + theme (plot.title = element_text(hjust = 0.5)) +
-  labs(x = "Top 40 words used in Twitter", y = "Count of each word", title = "Top 40 words used in covid tweets by sentiment") -> graph5
+  scale_color_brewer(palette = "Blues") +
+  labs(x="",y = "Count of each word", title = "Top 30 words used in covid tweets by sentiment") -> graph5
 
-ggplotly(graph5)
+graph5
 
 ```
 
-### Top 40 words used in tweets by sentiment (vaccine)
-
+### Top 30 words by sentiment (COVID vaccine)
 ```{r}
 
 ggplot(tweets_covidvaccine_words_sentiment, aes(x = word, y = n, fill = sentiment)) +
   facet_grid(~ sentiment, scales = "free", space="free_x") +
   geom_bar(stat = "identity", position = "dodge", width = 0.9) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-  labs(x = "Top 40 words used in Twitter", y = "Count of each word", title = "Top 40 words used in covidvaccine tweets by sentiment") -> graph6
+  scale_color_brewer(palette = "Dark2") +
+  labs(x="",y = "Count of each word", title = "Top 30 words used in covidvaccine tweets by sentiment") -> graph6
 
-ggplotly(graph6)
+graph6
+
 
 ```
 
-Column {data-width=500}
+
+Column {data-width=500 .tabset}
 -----------------------------------------------------------------------
 
-### How likely is a certain commonly used word used in different datasets?
+### Log odd ratio by word
 ```{r}
 tweets_covid_words = tweets_covid_words %>% mutate(source="COVID")
 tweets_covidvaccine_words = tweets_covidvaccine_words %>% mutate(source="COVIDvaccine")
@@ -258,8 +415,9 @@ COVID_COVIDvaccine_ratios %>%
   geom_bar(stat = "identity") +
   coord_flip() +
   ylab("COVID / COVIDvaccine") +
-  scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine", title = "How likely is a word coming from COVID dataset or COVID vaccine dataset by sentiments (top 20 words)?"),
-  values = c("red", "lightblue"))
+  labs(x = "", y = "Likelihood", title = "Log odds ratio by word?") +
+  scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine"),
+                    values = c("#378dfc", "#20c997")) -> graph7
 
 
 #look at sentiments and predict whether a tweet is from vaccine or covid
@@ -272,26 +430,130 @@ COVID_COVIDvaccine_sentiment <- COVID_COVIDvaccine_ratios %>%
   top_n(10, abs(logratio)) %>%
   ungroup() 
 
+ggplotly(graph7)
+
 ```
 
-### Log odds ratio of words by dataset in groups sentiments
+### Log odds ratio by sentiment
 ```{r}
 # Plot the log odds ratio of words by dataset in groups sentiments
 ggplot(COVID_COVIDvaccine_sentiment, aes(x = word, y = logratio, fill = logratio < 0)) +
   facet_wrap(~ sentiment, scales = "free", nrow = 2) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-  labs(x = "", y = "COVID / COVIDvaccine log ratio", title = "How likely is a word coming from from COVID dataset or COVID vaccine dataset (by sentiments)?") +
+  labs(x = "", y = "COVID / COVIDvaccine log ratio", title = "Log odds ratio by sentiment") +
   scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine"),
-                    values = c("red", "lightblue"))
+                    values = c("#378dfc", "#20c997")) -> graph8
+
+ggplotly(graph8)
 
 ```
 
-Result
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Result
+
+**How likely is a word coming from from COVID dataset or COVID vaccine dataset (by word or sentiment)?**
+
+The sentiment analysis of #covid shows stronger sentiment of “negative”, “fear”, and “sadness”. However, to our surprise, the strongest sentiment of #covid is “trust”. Most people trust parents (especially father), trust hospitals, and trust marriage. Although many negative emotions were present, at the same time “positive” emotions were also strongly talked about in donations, vaccines, and the public. In general, the #covid tweet contains a wide range of emotions.
+
+The #CovidVaccine tweets are very different in that the “positive” sentiments far outweighs the other sentiments. It is not difficult to see that this positive sentiment is mainly expressed in relation to vaccines. 
+
+Then, we calculate the log odd ratio of commonly used words by each hashtag and found that frequent words like “marriage”, “heroes”, “adopt”, and “legally” are more likely to be spoken by people who hashtag #covid, while “authorisation”, “applies”, and “indigenous” are more likely to be spoken by people who hashtag #CovidVaccine. 
+
+
+
+
+Afinn scores {data-navmenu=Analysis}
 =====================================================================
+
+Column {data-width=650 .tabset}
+-----------------------------------------------------------------------
+### COVID dataset
+```{r}
+
+covid_afinn = read.csv("/Users/lasgalen/Desktop/BDS 516/Final/covid_afinn.csv")
+covid_vaccine_afinn = read.csv("/Users/lasgalen/Desktop/BDS 516/Final/covid_vaccine_afinn.csv")
+
+covid_afinn <- covid_afinn %>% select(X0) %>% rename("afinn_score" = X0 )
+covid_vaccine_afinn <- covid_vaccine_afinn %>% select(X0) %>% 
+  rename("afinn_score" = X0 )
+
+hist(covid_afinn$afinn_score, main="Histogram of Afinn Score Distribution for COVID Dataset",
+     xlab = "Afinn Score",
+     xlim = c(-20,20),
+     ylim = c(0, 0.2),
+     breaks = 20,
+     col = "#378dfc",
+     border = none,
+     freq = FALSE)
+
+```
+
+### COVID Vaccine Dataset
+```{r}
+
+hist(covid_vaccine_afinn$afinn_score, 
+     main="Histogram of Afinn Score Distribution for COVID Vaccine Dataset",
+     xlab = "Afinn Score",
+     xlim = c(-20,20),
+     ylim = c(0, 0.2),
+     breaks = 20,
+     col = "#20c997",
+     border = none,
+     freq = FALSE) 
+
+
+```
+
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+### Result
+
+Afinn is the simplest yet popular lexicons used for sentiment analysis developed by Finn Årup Nielsen. It contains 3300+ words with a polarity score associated with each word. The AFINN lexicon assigns words with a score between -5 and 5, with negative scores indicating negative sentiment and positive scores indicating positive sentiment.
+
+According to the histogram, we can notice that the COVID vaccine dataset has a more centralized Afinn score, which means people’s sentiments in their tweets about COVID vaccine are more similar. The most common Afinn scores are close to 0. This may show that people have a neutral attitude towards COVID vaccine.
+
+COVID dataset has a relatively dispersed Afinn score distribution, while the most common scores are still close to 0. However, it should be noted that there are significantly more people showing positive sentiments in their tweets about COVID. Considering that people are more experienced facing the public health emergency, we can infer that this may be due to the distribution of vaccines and the more efficient and effective precaution actions and disease control strategies.
+
 
 Discussion & Limitations
 =====================================================================
 
+**Discussion:** 
+
+In general, we can see that people have a relatively positive attitude toward COVID vaccine, and this may further lead to a positive attitude towards the COVID pandemic (i.e. the control and the end of the pandemic). 
+However, we should also notice that it has a higher possibility that the negative words such as sadness, fear, anger, and disgust are from COVID vaccine related tweets, for example, anti-vaxxers and report of side-effects, which demonstrated that more vaccine propaganda and science popularization may be needed concerning the importance of public vaccination, and influence people’s behavior through emotional assistance in ending the pandemic.
+
+
+**Limitations:** 
+
+The first limitation in this project is the limitation of data. We only extracted English tweets as the subject of our study because it is the most used language in tweets and has a relatively large influence. But this may not convey the change in people's emotions during the pandemic at a global level. 
+Meanwhile, we only extracted 5000 tweets for each dataset, which is very little compared to the number of tweets about COVID and COVID vaccines every day around the world. This will also impact the representativeness of the conclusion 
+When comparing the time people tweeted we found that the comparison results generated after converting all the data to EST may be different from reality due to the different time zones and the lack of large Twitter data. 
+
+Second, the sentiment analysis that we use during the project is one of the most obvious ways of data analysis with unlabelled text data, however, the method is based on the literal meaning (definition from the dictionary) to determine the mood of a word. If the buzzwords during the pandemic expresses a meaning opposite to the literal meaning, then there will be analysis errors. 
+
+
+
 Attribution
 =====================================================================
+
+**This is the final project for course BDS 516 "Data Science And Quantitative Modeling" at the University of Pennsylvania.**
+
+Instructor: Alex Shpenev
+
+Date: 2021/05/10
+
+
+**This project is attributed to the following persons:**    
+
+Wenlu Yuan: Organizing code in R and Python 
+
+Yuqi Zhao: Organizing website creation and code in R for dashboard
+
+Pu Lou: Organizing text writing and data mining
+
+
