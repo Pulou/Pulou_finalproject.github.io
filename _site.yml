@@ -1,3 +1,14 @@
----
-title: Final Project
----
+name: "Fill Shark"
+output_dir: "."
+navbar:
+  title : "Fill Shark's Final Project"
+  left:
+   - text: "Final_Dashboard"
+     href: Final_Dashboard.html
+   - text: "Appendix"
+     href: .html
+
+output:
+  html_document:
+    theme: simplex
+    highlight: textmate

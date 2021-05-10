@@ -1,0 +1,297 @@
+---
+title: "Tweets Related to COVID-19 Pre- and Post- Vaccination"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+library(tidyverse)
+library(tidytext)
+library(lubridate)
+library(scales)
+library(parallel)
+library(plotly)
+library(knitr)
+
+my.cluster <- makeCluster(spec = 4) 
+clusterSetRNGStream(cl = my.cluster, iseed = 19390909) 
+
+tweets_covid <- read_csv("/Users/lasgalen/Desktop/BDS 516/Final/tweets_covid.csv")
+tweets_covidvaccine <- read_csv("/Users/lasgalen/Desktop/BDS 516/Final/tweets_covidvaccine.csv")
+nrc <- read_rds("/Users/lasgalen/Desktop/BDS 516/Final/nrc.rds")
+
+library(flexdashboard)
+
+```
+
+Introduction
+=====================================================================
+
+Data & Methodology
+=====================================================================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Data sample demonstration of COVID dataset
+
+```{r}
+# delete duplicates
+duplicates <- tweets_covid %>% inner_join(tweets_covidvaccine)
+tweets_covid <- tweets_covid %>% anti_join(duplicates)
+tweets_covidvaccine <- tweets_covidvaccine %>% anti_join(duplicates)
+
+# clean data
+cleaned_tweets_covid <- tweets_covid %>% 
+  select(status_id, source, text, created_at, retweet_count, favorite_count, is_retweet)
+cleaned_tweets_covidvaccine <- tweets_covidvaccine %>% 
+  select(status_id, source, text, created_at, retweet_count, favorite_count, is_retweet)
+
+cleaned_tweets_covid %>% head(10) 
+
+
+```
+
+### Data sample demonstration of COVID Vaccine dataset
+
+```{r}
+cleaned_tweets_covidvaccine %>% head(10) 
+
+```
+***
+Type comments here
+
+
+
+Preliminary Analysis{data-navmenu=Analysis}
+=====================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### COVID dataset
+
+```{r}
+
+# What time they published using twitter?
+cleaned_tweets_covid %>%
+  count(hour = hour(with_tz(created_at, "EST"))) %>%
+  mutate(percent = n/sum(n)) %>%
+  ggplot(aes(x = hour, y = percent)) +
+  labs(x = "Hour of day (EST)", y = "% of tweets", color = "") + 
+  scale_x_continuous("Time", breaks = seq(1,24,1)) +
+  scale_y_continuous("% of tweets", labels = percent_format()) + 
+  labs(title = "What time do the people published tweets related to COVID?") +
+  geom_line() ->graph1
+
+ggplotly(graph1)
+
+```
+***
+Type comments here
+
+### Vaccine dataset
+```{r}
+
+cleaned_tweets_covidvaccine %>%
+  count(hour = hour(with_tz(created_at, "EST"))) %>%
+  mutate(percent = n/sum(n)) %>%
+  ggplot(aes(x = hour, y = percent)) +
+  labs(x = "Hour of day (EST)", y = "% of tweets", color = "") + 
+  scale_x_continuous("Time", breaks = seq(1,24,1)) +
+  scale_y_continuous(labels = percent_format()) + 
+  labs(title = "What time do the people published tweets related to COVID vaccine?") +
+  geom_line() -> graph2
+
+ggplotly(graph2)
+
+```
+***
+Type comments here
+
+
+Column {data-width=350 .tabset}
+-----------------------------------------------------------------------
+
+### COVID dataset
+
+```{r}
+# Load the tidytext package - to bag the sentence into texts
+library(tidytext)
+
+# Create a regex pattern
+reg <- "([^A-Za-z\\d#@']|'(?![A-Za-z\\d#@]))"
+
+# Unrest the text strings into a data frame of words
+tweets_covid_words <- tweets_covid %>%
+  filter(!str_detect(text, '^"')) %>%
+  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+
+tweets_covidvaccine_words <- tweets_covidvaccine %>%
+  filter(!str_detect(text, '^"')) %>%
+  mutate(text = str_replace_all(text, "https://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+
+# Plot the most common words 
+tweets_covid_words %>%
+  count(word, sort = TRUE) %>% 
+  head(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+  geom_bar(stat = "identity") +
+  ylab("Occurrences") +
+  coord_flip() + labs(title = "Most common words in tweets related to COVID") -> graph3
+
+ggplotly(graph3)
+
+```
+***
+Type comments here
+
+### Vaccine dataset
+```{r}
+
+tweets_covidvaccine_words %>%
+  count(word, sort = TRUE) %>%
+  head(20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+  geom_bar(stat = "identity") +
+  ylab("Occurrences") +
+  coord_flip()+ labs(title = "Most common words in tweets related to COVID vaccine") -> graph4
+
+ggplotly(graph4)
+
+```
+***
+Type comments here
+
+
+World Clouds {data-navmenu=Analysis}
+=====================================================================
+
+Top Words by Sentiment {data-navmenu=Analysis}
+=====================================================================
+
+
+Column {data-width=500 .tabset}
+-----------------------------------------------------------------------
+
+### Top 30 words used in tweets by sentiment (COVID)
+
+```{r}
+tweets_covid_words_sentiment <-    
+ inner_join(tweets_covid_words, nrc, by = "word") %>% 
+            group_by(sentiment)  %>%
+            count(word, sort = TRUE) %>%
+            head(30)
+
+tweets_covidvaccine_words_sentiment <-    
+ inner_join(tweets_covidvaccine_words, nrc, by = "word") %>% 
+            group_by(sentiment)  %>% 
+            count(word, sort = TRUE) %>%
+            head(30)
+
+ggplot(tweets_covid_words_sentiment, aes(x = word, y = n, fill = sentiment)) +
+  facet_grid(~ sentiment, scales = "free", space="free_x") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.9) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + theme (plot.title = element_text(hjust = 0.5)) +
+  labs(x = "Top 40 words used in Twitter", y = "Count of each word", title = "Top 40 words used in covid tweets by sentiment") -> graph5
+
+ggplotly(graph5)
+
+```
+
+### Top 40 words used in tweets by sentiment (vaccine)
+
+```{r}
+
+ggplot(tweets_covidvaccine_words_sentiment, aes(x = word, y = n, fill = sentiment)) +
+  facet_grid(~ sentiment, scales = "free", space="free_x") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.9) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Top 40 words used in Twitter", y = "Count of each word", title = "Top 40 words used in covidvaccine tweets by sentiment") -> graph6
+
+ggplotly(graph6)
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### How likely is a certain commonly used word used in different datasets?
+```{r}
+tweets_covid_words = tweets_covid_words %>% mutate(source="COVID")
+tweets_covidvaccine_words = tweets_covidvaccine_words %>% mutate(source="COVIDvaccine")
+rbind(tweets_covidvaccine_words, tweets_covid_words) -> combined
+
+combined_sentiment <-    
+ inner_join(combined, nrc, by = "word") %>% 
+            group_by(sentiment) 
+
+# calculate the log score of how likely a word comes from vaccine or covid
+COVID_COVIDvaccine_ratios <- 
+combined %>%
+  count(word, source) %>%
+  group_by(word)  %>% 
+  filter(sum(n) >= 5) %>%
+  spread(source, n, fill = 0) %>%
+  ungroup()  %>% 
+  mutate_if(is.numeric, ~((. + 1) / sum(. + 1))) %>%
+  mutate(logratio = log2(COVID / COVIDvaccine)) %>%
+  arrange(desc(logratio))
+
+#plot the top 20 common words in the combined word set and their likelihood of belong to each dataset
+COVID_COVIDvaccine_ratios %>%
+  top_n(20, abs(logratio)) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, logratio)) %>%
+  ggplot(aes(x = word, y = logratio, fill = logratio < 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  ylab("COVID / COVIDvaccine") +
+  scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine", title = "How likely is a word coming from COVID dataset or COVID vaccine dataset by sentiments (top 20 words)?"),
+  values = c("red", "lightblue"))
+
+
+#look at sentiments and predict whether a tweet is from vaccine or covid
+COVID_COVIDvaccine_sentiment <- COVID_COVIDvaccine_ratios %>%
+  inner_join(nrc, by = "word") %>%
+  filter(!sentiment %in% c("COVID", "COVIDvaccine")) %>%
+  mutate(sentiment = reorder(sentiment, -logratio),
+         word = reorder(word, -logratio)) %>%
+  group_by(sentiment) %>%
+  top_n(10, abs(logratio)) %>%
+  ungroup() 
+
+```
+
+### Log odds ratio of words by dataset in groups sentiments
+```{r}
+# Plot the log odds ratio of words by dataset in groups sentiments
+ggplot(COVID_COVIDvaccine_sentiment, aes(x = word, y = logratio, fill = logratio < 0)) +
+  facet_wrap(~ sentiment, scales = "free", nrow = 2) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "", y = "COVID / COVIDvaccine log ratio", title = "How likely is a word coming from from COVID dataset or COVID vaccine dataset (by sentiments)?") +
+  scale_fill_manual(name = "", labels = c("COVID", "COVIDvaccine"),
+                    values = c("red", "lightblue"))
+
+```
+
+Result
+=====================================================================
+
+Discussion & Limitations
+=====================================================================
+
+Attribution
+=====================================================================
